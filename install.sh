@@ -14,13 +14,12 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Konfigurasi
+# Default Konfigurasi
 APP_DIR="/var/www/linuxsec"
 GIT_URL="https://github.com/lsec-code/linuxsec.git"
 DB_NAME="linuxsec_db"
 DB_USER="linuxsec_user"
-DB_PASS=$(openssl rand -base64 12) # Generate random password
-PORT=9999
+DB_PASS=$(openssl rand -base64 12)
 PHP_VER="8.3"
 
 # ASCII Art Tux
@@ -47,20 +46,61 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-echo -e "${YELLOW}[+] Memulai instalasi...${NC}"
-sleep 2
+# ==========================================
+#  Interactive Setup
+# ==========================================
+
+# 1. Domain Input
+echo -e "${YELLOW}[?] Masukkan Domain Anda (Biarkan kosong untuk 'localhost'):${NC}"
+read -p "> " DOMAIN_INPUT
+
+if [[ -z "$DOMAIN_INPUT" ]]; then
+    DOMAIN="localhost"
+    PORT="9999"
+    SERVER_NAME="_"
+    IS_LOCALHOST=true
+    echo -e "${GREEN}[OK] Menggunakan mode Localhost Port 9999${NC}"
+else
+    DOMAIN="$DOMAIN_INPUT"
+    PORT="80"
+    SERVER_NAME="$DOMAIN"
+    IS_LOCALHOST=false
+    echo -e "${GREEN}[OK] Menggunakan Domain: $DOMAIN${NC}"
+fi
+
+# 2. SSL Option (Only if not localhost)
+INSTALL_SSL=false
+if [ "$IS_LOCALHOST" = false ]; then
+    echo -e "\n${YELLOW}[?] Apakah Anda ingin menginstall SSL (HTTPS) via Let's Encrypt? (y/n)${NC}"
+    read -p "> " SSL_CHOICE
+    if [[ "$SSL_CHOICE" =~ ^[Yy]$ ]]; then
+        INSTALL_SSL=true
+    fi
+fi
+
+echo -e "\n${YELLOW}[+] Memulai instalasi dalam 3 detik...${NC}"
+sleep 3
+
+# ==========================================
+#  Installation Process
+# ==========================================
 
 # 1. Update System & Install Dependencies
 echo -e "${YELLOW}[+] Mengupdate sistem & menginstall dependensi...${NC}"
 apt-get update
-apt-get install -y software-properties-common curl git unzip zip mariadb-server nginx
+# Add Certbot if SSL needed
+if [ "$INSTALL_SSL" = true ]; then
+    apt-get install -y software-properties-common curl git unzip zip mariadb-server nginx certbot python3-certbot-nginx
+else
+    apt-get install -y software-properties-common curl git unzip zip mariadb-server nginx
+fi
 
-# Tambahkan PPA PHP jika belum ada
+# Tambahkan PPA PHP
 add-apt-repository ppa:ondrej/php -y
 apt-get update
 
 # Install PHP 8.3 & Ekstensi
-echo -e "${YELLOW}[+] Menginstall PHP $PHP_VER dan ekstensi yang dibutuhkan...${NC}"
+echo -e "${YELLOW}[+] Menginstall PHP $PHP_VER...${NC}"
 apt-get install -y php$PHP_VER php$PHP_VER-fpm php$PHP_VER-mysql php$PHP_VER-curl \
     php$PHP_VER-xml php$PHP_VER-mbstring php$PHP_VER-zip php$PHP_VER-bcmath \
     php$PHP_VER-intl php$PHP_VER-gd php$PHP_VER-cli
@@ -77,60 +117,62 @@ echo -e "${YELLOW}[+] Mengkonfigurasi Database...${NC}"
 systemctl start mariadb
 systemctl enable mariadb
 
-# Buat DB dan User secara otomatis
 mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
 mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';"
 mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';"
 mysql -e "FLUSH PRIVILEGES;"
 
-echo -e "${GREEN}[OK] Database siap. User: ${DB_USER} | Pass: (Tersimpan di .env)${NC}"
-
 # 3. Setup Aplikasi Laravel
-echo -e "${YELLOW}[+] Mengambil source code dari Github...${NC}"
+echo -e "${YELLOW}[+] Mengambil source code...${NC}"
 
-# Hapus folder lama jika ada (untuk reinstall)
 if [ -d "$APP_DIR" ]; then
-    echo -e "${RED}[!] Direktori aplikasi lama ditemukan. Menghapus...${NC}"
     rm -rf $APP_DIR
 fi
 
-# Clone Repo
 git clone $GIT_URL $APP_DIR
-
 cd $APP_DIR
 
-# Setup .env
-echo -e "${YELLOW}[+] Mengkonfigurasi Environment (.env)...${NC}"
+echo -e "${YELLOW}[+] Konfigurasi Environment...${NC}"
 cp .env.example .env
 
-# Update .env dengan sed
 sed -i "s/DB_DATABASE=.*/DB_DATABASE=${DB_NAME}/" .env
 sed -i "s/DB_USERNAME=.*/DB_USERNAME=${DB_USER}/" .env
 sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${DB_PASS}/" .env
-sed -i "s/APP_URL=.*/APP_URL=http:\/\/localhost:${PORT}/" .env
 
-# Install Dependencies Laravel
-echo -e "${YELLOW}[+] Menginstall dependensi Laravel (Composer)...${NC}"
+if [ "$IS_LOCALHOST" = true ]; then
+    sed -i "s/APP_URL=.*/APP_URL=http:\/\/localhost:${PORT}/" .env
+else
+    if [ "$INSTALL_SSL" = true ]; then
+        sed -i "s/APP_URL=.*/APP_URL=https:\/\/${DOMAIN}/" .env
+    else
+        sed -i "s/APP_URL=.*/APP_URL=http:\/\/${DOMAIN}/" .env
+    fi
+fi
+
+echo -e "${YELLOW}[+] Install Dependencies...${NC}"
 composer install --no-dev --optimize-autoloader
 
-# Generate Key & Migrate
 php artisan key:generate
 php artisan migrate --force
 php artisan storage:link
 php artisan optimize
 
-# Permission
 chown -R www-data:www-data $APP_DIR
 chmod -R 775 $APP_DIR/storage $APP_DIR/bootstrap/cache
 
 # 4. Setup Nginx
-echo -e "${YELLOW}[+] Mengkonfigurasi Nginx di Port ${PORT}...${NC}"
+echo -e "${YELLOW}[+] Konfigurasi Nginx...${NC}"
 
-# Buat Config Nginx
+# Logic Listen Port
+LISTEN_DIRECTIVE="listen $PORT;"
+if [ "$IS_LOCALHOST" = false ]; then
+    LISTEN_DIRECTIVE="listen 80;"
+fi
+
 cat > /etc/nginx/sites-available/linuxsec.conf <<EOF
 server {
-    listen $PORT;
-    server_name _;
+    $LISTEN_DIRECTIVE
+    server_name $SERVER_NAME;
     root $APP_DIR/public;
 
     add_header X-Frame-Options "SAMEORIGIN";
@@ -161,25 +203,36 @@ server {
 }
 EOF
 
-# Enable Site
 ln -sf /etc/nginx/sites-available/linuxsec.conf /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
-# Test & Restart Nginx
+grep -q "client_max_body_size" /etc/nginx/nginx.conf || sed -i '/http {/a \    client_max_body_size 100M;' /etc/nginx/nginx.conf
+
 nginx -t
 systemctl restart nginx
 
-# 5. Selesai
+# 5. SSL Installation
+if [ "$INSTALL_SSL" = true ]; then
+    echo -e "${YELLOW}[+] Menginstall SSL Certbot...${NC}"
+    certbot --nginx -d $DOMAIN --non-interactive --agree-tos --register-unsafely-without-email --redirect
+fi
+
+# 6. Selesai
 echo ""
 echo -e "${BLUE}=======================================${NC}"
 echo -e "${GREEN}   I N S T A L A S I   S E L E S A I ! ${NC}"
 echo -e "${BLUE}=======================================${NC}"
 echo ""
-echo -e "Aplikasi berjalan di: ${CYAN}http://IP_SERVER_ANDA:${PORT}${NC}"
-echo -e "Database            : ${CYAN}${DB_NAME}${NC}"
-echo -e "DB User             : ${CYAN}${DB_USER}${NC}"
-echo -e "DB Password         : ${CYAN}${DB_PASS}${NC}"
-echo ""
-echo -e "${YELLOW}Simpan password database ini jika diperlukan!${NC}"
-echo -e "${YELLOW}Password ini juga sudah tersimpan otomatis di file .env${NC}"
+if [ "$IS_LOCALHOST" = true ]; then
+    echo -e "Akses Web: ${CYAN}http://localhost:${PORT}${NC}"
+else
+    if [ "$INSTALL_SSL" = true ]; then
+        echo -e "Akses Web: ${CYAN}https://${DOMAIN}${NC}"
+    else
+        echo -e "Akses Web: ${CYAN}http://${DOMAIN}${NC}"
+    fi
+fi
+echo -e "Database : ${CYAN}${DB_NAME}${NC}"
+echo -e "User DB  : ${CYAN}${DB_USER}${NC}"
+echo -e "Pass DB  : ${CYAN}${DB_PASS}${NC}"
 echo ""

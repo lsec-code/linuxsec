@@ -42,6 +42,12 @@ class AdminController extends Controller
         return redirect()->back()->with('success', 'Pengaturan berhasil diperbarui.');
     }
 
+    public function captcha()
+    {
+        $settings = Setting::all()->pluck('value', 'key');
+        return view('admin.captcha', compact('settings'));
+    }
+
     // Cards
     public function cards(Request $request)
     {

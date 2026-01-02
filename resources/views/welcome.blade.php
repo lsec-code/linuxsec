@@ -35,8 +35,11 @@
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     </style>
-    @if(isset($settings['ad_header']))
-        {!! $settings['ad_header'] !!}
+    <!-- Captcha Scripts -->
+    @if(($settings['captcha_provider'] ?? 'none') == 'recaptcha')
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    @elseif(($settings['captcha_provider'] ?? 'none') == 'turnstile')
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     @endif
 </head>
 <body class="min-h-screen flex flex-col p-4 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat bg-fixed relative">
@@ -162,6 +165,14 @@
                     <input type="password" name="password" class="input-field w-full p-3 rounded-lg" placeholder="••••••••" required>
                 </div>
                 <div id="loginError" class="text-red-400 text-sm hidden"></div>
+                
+                <!-- Captcha Widget -->
+                @if(($settings['captcha_provider'] ?? 'none') == 'recaptcha')
+                    <div class="g-recaptcha mb-4" data-sitekey="{{ $settings['captcha_site_key'] ?? '' }}"></div>
+                @elseif(($settings['captcha_provider'] ?? 'none') == 'turnstile')
+                    <div class="cf-turnstile mb-4" data-sitekey="{{ $settings['captcha_site_key'] ?? '' }}"></div>
+                @endif
+
                 <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-3 rounded-lg transition shadow-lg shadow-blue-500/30">Masuk</button>
             </form>
 
@@ -188,6 +199,14 @@
                 </div>
                 
                 <div id="registerError" class="text-red-400 text-sm hidden"></div>
+
+                <!-- Captcha Widget -->
+                @if(($settings['captcha_provider'] ?? 'none') == 'recaptcha')
+                    <div class="g-recaptcha mb-4" data-sitekey="{{ $settings['captcha_site_key'] ?? '' }}"></div>
+                @elseif(($settings['captcha_provider'] ?? 'none') == 'turnstile')
+                    <div class="cf-turnstile mb-4" data-sitekey="{{ $settings['captcha_site_key'] ?? '' }}"></div>
+                @endif
+
                 <button type="submit" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold py-3 rounded-lg transition shadow-lg shadow-emerald-500/30">Daftar</button>
             </form>
 
@@ -203,6 +222,13 @@
                 </div>
                 <div id="forgotError" class="text-red-400 text-sm hidden"></div>
                 <div id="forgotSuccess" class="text-green-400 text-sm hidden"></div>
+                
+                <!-- Captcha Widget -->
+                @if(($settings['captcha_provider'] ?? 'none') == 'recaptcha')
+                    <div class="g-recaptcha mb-4" data-sitekey="{{ $settings['captcha_site_key'] ?? '' }}"></div>
+                @elseif(($settings['captcha_provider'] ?? 'none') == 'turnstile')
+                    <div class="cf-turnstile mb-4" data-sitekey="{{ $settings['captcha_site_key'] ?? '' }}"></div>
+                @endif
                 
                 <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-bold py-3 rounded-lg transition shadow-lg shadow-purple-500/30">Kirim Link Reset</button>
                 
@@ -439,5 +465,10 @@
     <footer class="relative z-10 text-center py-8 text-gray-500 text-sm">
         &copy; {{ $settings['footer_year'] ?? date('Y') }} <span class="text-gray-400 font-semibold">{{ $settings['footer_text'] ?? 'LinuxSec Tools' }}</span>. All rights reserved.
     </footer>
+
+    <!-- Global Ad Header/Popup Scripts (Executed Last) -->
+    @if(isset($settings['ad_header']))
+        {!! $settings['ad_header'] !!}
+    @endif
 </body>
 </html>

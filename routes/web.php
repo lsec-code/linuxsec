@@ -35,11 +35,11 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->name
 Route::get('/reset-password/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 
-Route::get('/promote-admin/{username}', function ($username) {
-    $user = \App\Models\User::where('username', $username)->firstOrFail();
-    $user->update(['is_admin' => true]);
-    return "User {$username} is now an Admin!";
-});
+// Route::get('/promote-admin/{username}', function ($username) {
+//     $user = \App\Models\User::where('username', $username)->firstOrFail();
+//     $user->update(['is_admin' => true]);
+//     return "User {$username} is now an Admin!";
+// });
 
 Route::get('/api/stats', [\App\Http\Controllers\StatsController::class, 'getStats']);
 
@@ -47,6 +47,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/', [\App\Http\Controllers\AdminController::class, 'index'])->name('admin.dashboard');
     Route::get('/settings', [\App\Http\Controllers\AdminController::class, 'settings'])->name('admin.settings');
     Route::post('/settings', [\App\Http\Controllers\AdminController::class, 'updateSettings'])->name('admin.settings.update');
+
+    Route::get('/captcha', [\App\Http\Controllers\AdminController::class, 'captcha'])->name('admin.captcha');
     
     Route::get('/cards', [\App\Http\Controllers\AdminController::class, 'cards'])->name('admin.cards');
     Route::post('/cards', [\App\Http\Controllers\AdminController::class, 'storeCard'])->name('admin.cards.store');
