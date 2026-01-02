@@ -18,8 +18,8 @@ NC='\033[0m' # No Color
 APP_DIR="/var/www/linuxsec"
 GIT_URL="https://github.com/lsec-code/linuxsec.git"
 DB_NAME="linuxsec_db"
-DB_USER="linuxsec_user"
-DB_PASS=$(openssl rand -base64 12)
+DB_USER="root"
+DB_PASS=""
 PHP_VER="8.3"
 
 # ASCII Art Tux
@@ -118,9 +118,9 @@ systemctl start mariadb
 systemctl enable mariadb
 
 mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
-mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';"
-mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';"
-mysql -e "FLUSH PRIVILEGES;"
+# mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';"
+# mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';"
+# mysql -e "FLUSH PRIVILEGES;"
 
 # 3. Setup Aplikasi Laravel
 echo -e "${YELLOW}[+] Mengambil source code...${NC}"
