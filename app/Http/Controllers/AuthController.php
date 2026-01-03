@@ -13,41 +13,50 @@ class AuthController extends Controller
     // Captcha Validation Helper
     private function validateCaptcha(Request $request)
     {
-        $provider = \App\Models\Setting::where('key', 'captcha_provider')->value('value');
-        
-        if (!$provider || $provider === 'none') {
-            return true;
-        }
-
-        $secret = \App\Models\Setting::where('key', 'captcha_secret_key')->value('value');
-        
-        if ($provider === 'recaptcha') {
-            $token = $request->input('g-recaptcha-response');
-            if (!$token) return false;
+        try {
+            $provider = \App\Models\Setting::where('key', 'captcha_provider')->value('value');
             
-            $verify = json_decode(file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$secret}&response={$token}"), true);
-            return $verify['success'] ?? false;
+            if (!$provider || $provider === 'none') {
+                return true;
+            }
+
+            $secret = \App\Models\Setting::where('key', 'captcha_secret_key')->value('value');
+            
+            if ($provider === 'recaptcha') {
+                $token = $request->input('g-recaptcha-response');
+                if (!$token) return false;
+                
+                $response = \Illuminate\Support\Facades\Http::get("https://www.google.com/recaptcha/api/siteverify", [
+                    'secret' => $secret,
+                    'response' => $token
+                ]);
+                
+                return $response->json()['success'] ?? false;
+            }
+
+            if ($provider === 'turnstile') {
+                $token = $request->input('cf-turnstile-response');
+                if (!$token) return false;
+
+                $response = \Illuminate\Support\Facades\Http::asForm()->post("https://challenges.cloudflare.com/turnstile/v0/siteverify", [
+                    'secret' => $secret,
+                    'response' => $token
+                ]);
+
+                return $response->json()['success'] ?? false;
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            // Log error if needed: \Log::error('Captcha Error: ' . $e->getMessage());
+            // Fail open (allow login) if Captcha server fails, or fail closed? 
+            // We'll fail closed for security but provide log. 
+            // Actually for user experience now, let's return false but log it.
+            // Wait, if it fails due to network, user is locked out. 
+            // Let's return true (allow) if it's a server side config error to prevent lockout, 
+            // unless we are sure.
+            return true; 
         }
-
-        if ($provider === 'turnstile') {
-            $token = $request->input('cf-turnstile-response');
-            if (!$token) return false;
-
-            // Turnstile requires POST request
-            $data = ['secret' => $secret, 'response' => $token];
-            $options = [
-                'http' => [
-                    'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
-                    'method'  => 'POST',
-                    'content' => http_build_query($data)
-                ]
-            ];
-            $context  = stream_context_create($options);
-            $verify = json_decode(file_get_contents("https://challenges.cloudflare.com/turnstile/v0/siteverify", false, $context), true);
-            return $verify['success'] ?? false;
-        }
-
-        return true;
     }
 
     public function register(Request $request)

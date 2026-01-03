@@ -371,7 +371,8 @@
                 } else if (error.response?.data?.errors) {
                     errorDiv.innerHTML = Object.values(error.response.data.errors).flat().join('<br>');
                 } else {
-                    errorDiv.innerHTML = 'Login gagal. Silakan coba lagi.';
+                    errorDiv.innerHTML = `Login gagal (Status: ${error.response?.status || 'Unknown'}). Silakan coba lagi.`;
+                    console.error('Login Error:', error);
                 }
             }
         });
