@@ -346,7 +346,6 @@
         }
 
         // Login Handler
-        // Login Handler
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = e.target.querySelector('button');
@@ -359,7 +358,8 @@
             errorDiv.classList.add('hidden');
 
             try {
-                const response = await axios.post("{{ route('login') }}", formData);
+                // Use relative path to avoid Mixed Content issues
+                const response = await axios.post("/login", formData);
                 window.location.reload();
             } catch (error) {
                 errorDiv.classList.remove('hidden');
@@ -371,7 +371,7 @@
                 } else if (error.response?.data?.errors) {
                     errorDiv.innerHTML = Object.values(error.response.data.errors).flat().join('<br>');
                 } else {
-                    errorDiv.innerHTML = `Login gagal (Status: ${error.response?.status || 'Unknown'}). Silakan coba lagi.`;
+                    errorDiv.innerHTML = `Login gagal (Status: ${error.response?.status || 'Unknown'}). Cek koneksi internet atau refresh halaman.`;
                     console.error('Login Error:', error);
                 }
             }
@@ -386,7 +386,7 @@
             errorDiv.classList.add('hidden');
 
             try {
-                const response = await axios.post("{{ route('register') }}", formData);
+                const response = await axios.post("/register", formData);
                 window.location.reload();
             } catch (error) {
                 errorDiv.classList.remove('hidden');
@@ -415,7 +415,7 @@
             btn.innerText = 'Mengirim...';
 
             try {
-                const response = await axios.post("{{ route('password.email') }}", formData);
+                const response = await axios.post("/forgot-password", formData);
                 successDiv.innerText = response.data.message;
                 successDiv.classList.remove('hidden');
                 
