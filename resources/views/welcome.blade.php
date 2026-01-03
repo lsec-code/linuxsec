@@ -58,8 +58,7 @@
                 <!-- Live Stats -->
                 <div class="flex gap-4 mt-4 justify-center md:justify-start">
                     <div class="bg-white/5 border border-white/10 rounded-lg px-3 py-1 flex items-center gap-2">
-                        <span class="text-green-400 text-xs">● Live</span>
-                        <div class="text-xs text-gray-400">Pengunjung: <span id="visitor-count" class="text-white font-bold">...</span></div>
+                        <div class="text-xs text-gray-400">Total Pengunjung: <span id="visitor-count" class="text-white font-bold">...</span></div>
                     </div>
                     <div class="bg-white/5 border border-white/10 rounded-lg px-3 py-1 flex items-center gap-2">
                         <div class="text-xs text-gray-400">Users: <span id="user-count" class="text-white font-bold">...</span></div>

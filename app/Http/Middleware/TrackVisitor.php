@@ -16,15 +16,20 @@ class TrackVisitor
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $ip = $request->ip();
-        
-        // Check if visitor exists, if not create
-        // using firstOrCreate to avoid race conditions roughly
-        if (!Visitor::where('ip_address', $ip)->exists()) {
-            Visitor::create([
-                'ip_address' => $ip,
-                'user_agent' => $request->userAgent()
-            ]);
+        // Ignore API and Assets
+        if ($request->is('api/*') || $request->is('assets/*')) {
+            return $next($request);
+        }
+
+        try {
+            // Count unique visitor by IP
+            // We use firstOrCreate to avoid duplicates due to the unique constraint on ip_address
+            Visitor::firstOrCreate(
+                ['ip_address' => $request->ip()],
+                ['user_agent' => $request->userAgent()]
+            );
+        } catch (\Exception $e) {
+            // Fail silently if something goes wrong (e.g. race condition) to not block the request
         }
 
         return $next($request);

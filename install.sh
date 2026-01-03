@@ -142,6 +142,10 @@ sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${DB_PASS}/" .env
 if [ "$IS_LOCALHOST" = true ]; then
     sed -i "s/APP_URL=.*/APP_URL=http:\/\/localhost:${PORT}/" .env
 else
+    # Production Settings for Domain
+    sed -i "s/APP_ENV=local/APP_ENV=production/" .env
+    sed -i "s/APP_DEBUG=true/APP_DEBUG=false/" .env
+
     if [ "$INSTALL_SSL" = true ]; then
         sed -i "s/APP_URL=.*/APP_URL=https:\/\/${DOMAIN}/" .env
     else
