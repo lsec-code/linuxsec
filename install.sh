@@ -69,13 +69,24 @@ else
 fi
 
 # 2. SSL Option (Only if not localhost)
-INSTALL_SSL=false
-if [ "$IS_LOCALHOST" = false ]; then
-    echo -e "\n${YELLOW}[?] Apakah Anda ingin menginstall SSL (HTTPS) via Let's Encrypt? (y/n)${NC}"
-    read -p "> " SSL_CHOICE
     if [[ "$SSL_CHOICE" =~ ^[Yy]$ ]]; then
         INSTALL_SSL=true
     fi
+fi
+
+# 3. Create Admin User
+CREATE_ADMIN=false
+echo -e "\n${YELLOW}[?] Apakah Anda ingin membuat user Admin sekarang? (y/n)${NC}"
+read -p "> " ADMIN_CHOICE
+if [[ "$ADMIN_CHOICE" =~ ^[Yy]$ ]]; then
+    CREATE_ADMIN=true
+    echo -e "${YELLOW}Masukkan Username Admin:${NC}"
+    read -p "> " ADMIN_USER
+    echo -e "${YELLOW}Masukkan Email Admin:${NC}"
+    read -p "> " ADMIN_EMAIL
+    echo -e "${YELLOW}Masukkan Password Admin:${NC}"
+    read -s -p "> " ADMIN_PASS
+    echo ""
 fi
 
 echo -e "\n${YELLOW}[+] Memulai instalasi dalam 3 detik...${NC}"
@@ -215,6 +226,21 @@ grep -q "client_max_body_size" /etc/nginx/nginx.conf || sed -i '/http {/a \    c
 
 nginx -t
 systemctl restart nginx
+
+# 5. Create Admin User
+if [ "$CREATE_ADMIN" = true ]; then
+    echo -e "${YELLOW}[+] Membuat User Admin...${NC}"
+    cd $APP_DIR
+    php artisan make:admin --username="$ADMIN_USER" --email="$ADMIN_EMAIL" --password="$ADMIN_PASS"
+fi
+
+# 6. Clear Caches (Important for Production)
+echo -e "${YELLOW}[+] Membersihkan Cache...${NC}"
+cd $APP_DIR
+php artisan config:clear
+php artisan cache:clear
+php artisan route:clear
+php artisan view:clear
 
 # 5. SSL Installation
 if [ "$INSTALL_SSL" = true ]; then

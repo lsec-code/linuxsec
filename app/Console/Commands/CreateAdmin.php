@@ -14,7 +14,15 @@ class CreateAdmin extends Command
      *
      * @var string
      */
-    protected $signature = 'make:admin';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'make:admin 
+                            {--username= : The username of the user} 
+                            {--email= : The email address of the user} 
+                            {--password= : The password for the user}';
 
     /**
      * The console command description.
@@ -31,13 +39,15 @@ class CreateAdmin extends Command
         $this->info('🚀 LinuxSec Admin Creator');
         $this->info('=========================');
 
-        $username = $this->ask('Username');
+        $username = $this->option('username') ?: $this->ask('Username');
 
         // Check if user exists
         $user = User::where('username', $username)->first();
 
         if ($user) {
-            if ($this->confirm("User '{$username}' already exists. Do you want to promote them to Admin?", true)) {
+            $shouldPromote = $this->option('username') ? true : $this->confirm("User '{$username}' already exists. Do you want to promote them to Admin?", true);
+            
+            if ($shouldPromote) {
                 $user->update(['is_admin' => true]);
                 $this->info("✅ Success! User '{$username}' is now an Admin.");
             } else {
@@ -47,13 +57,15 @@ class CreateAdmin extends Command
         }
 
         // Create new user
-        $email = $this->ask('Email Address');
-        $password = $this->secret('Password');
-        $confirmPassword = $this->secret('Confirm Password');
-
-        if ($password !== $confirmPassword) {
-            $this->error('❌ Passwords do not match!');
-            return;
+        $email = $this->option('email') ?: $this->ask('Email Address');
+        $password = $this->option('password') ?: $this->secret('Password');
+        
+        if (!$this->option('password')) {
+            $confirmPassword = $this->secret('Confirm Password');
+            if ($password !== $confirmPassword) {
+                $this->error('❌ Passwords do not match!');
+                return;
+            }
         }
 
         // Validate
