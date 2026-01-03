@@ -138,6 +138,7 @@ cp .env.example .env
 sed -i "s/DB_DATABASE=.*/DB_DATABASE=${DB_NAME}/" .env
 sed -i "s/DB_USERNAME=.*/DB_USERNAME=${DB_USER}/" .env
 sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${DB_PASS}/" .env
+sed -i "s/APP_TIMEZONE=.*/APP_TIMEZONE=Asia\/Jakarta/" .env
 
 if [ "$IS_LOCALHOST" = true ]; then
     sed -i "s/APP_URL=.*/APP_URL=http:\/\/localhost:${PORT}/" .env
